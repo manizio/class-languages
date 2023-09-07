@@ -8,9 +8,11 @@ int main(int argc, char *argv[])
  
     if (argc == 2)
     {
-        struct afd *machine = initializeAFD();
+        struct afd machine;
+        initializeAFD(&machine);
+
         char *input = argv[1];
-        int isMatch = match(input, 0, strlen(input)-1, machine);
+        int isMatch = match(input, &machine);
 
         if (isMatch)
         {
@@ -19,12 +21,11 @@ int main(int argc, char *argv[])
         {
             printf("Invalid string\n");
         }
-
-        free(machine);
-
+        destroy_afd(&machine);
     } else {
         printf("Invalid use\n");
     }
+
 
     return 0;
 

@@ -5,99 +5,133 @@
 
 // DDDDD-DDD
 
-#define NUM_STATES 9
-#define START_STATE 1
-#define FINAL_STATE 10
-#define DASH_STATE 6
-#define FINAL_DIGITS_STATE 7
-
-struct afd *initializeAFD()
+// Criar uma linha na tabela
+struct line *create_line(char s, unsigned int i)
 {
-    struct afd *machine = (struct afd *) malloc(sizeof(struct afd));
-    machine->n = NUM_STATES;
-    machine->transitions = (struct line **) malloc(NUM_STATES * sizeof(struct line *));
+    // Aloca memória para uma linha
+    struct line *l =  malloc(sizeof(struct line));
 
-    // inicializar as transições para cada estado
-    for (int i = 0; i < NUM_STATES; i++)
-    {
-        machine->transitions[i] = NULL;
-    }
+    // Insere o símbolo, número do próximo estado e o próximo estado (NULL)
+    l->symbol = s;
+    l->next_state = i;
+    l->next = NULL;
 
-    // transições para DIGIT_STATES (1-5)
-    for (int i = 0; i <= 5; i++)
-    {
-        machine->transitions[i] = (struct line *) malloc (sizeof(struct line));
-        machine->transitions[i]->symbol = 'D';
-        machine->transitions[i]->next_state = i + 1;
-        machine->transitions[i]->next = NULL;
-    }
-
-    // transição para DASH_STATE
-    machine->transitions[5]->next_state = DASH_STATE;
-
-    machine->transitions[DASH_STATE] = (struct line *) malloc (sizeof(struct line));
-    machine->transitions[DASH_STATE]->symbol = '-';
-    machine->transitions[DASH_STATE]->next_state = FINAL_DIGITS_STATE;
-    machine->transitions[DASH_STATE]->next = NULL;
-
-    // transições para FINAL_DIGIT_STATES (7-9)
-    for (int i = 7; i <= 9; i++)
-    {
-        machine->transitions[i] = (struct line *) malloc (sizeof(struct line));
-        machine->transitions[i]->symbol = 'D';
-        machine->transitions[i]->next_state = i + 1;
-        machine->transitions[i]->next = NULL;
-    };
-
-    return machine;
+    return l;
 }
 
-int match(char *string, int s, int f, struct afd *t)
+void insert_line(struct line **l, struct line *n)
+{   
+    // Insere a linha na tabela
+    n->next = *l;
+    *l = n;
+}
+
+void destroy_line (struct line *l)
 {
-    int current_state = START_STATE; // inicializa o estado atual
-
-    for (int i = s; i <= f; i++)
+    if (l != NULL)
     {
-        char symbol = string[i]; 
-        struct line *transition = t->transitions[current_state]; // obtem a transição atual
+        destroy_line(l->next);
+        free(l);
+    }
+}
 
-        while (transition != NULL){
+void destroy_afd(struct afd *a)
+{
+    unsigned int i;
+    for (i = 0; i < a->n; i++)
+    {
+        destroy_line(a->transitions[i]);
+    }
 
-            // para digitos
-            if (transition->symbol == 'D' && symbol >= '0' && symbol <= '9') 
-            {
-                current_state = transition->next_state;
-                break;
-            }
+    free(a->transitions);
+}
 
-            // para traço
-            if (transition->symbol == '-' && symbol == '-')
-            {
-                current_state = transition->next_state;
-                break;
-            }
+void initializeAFD(struct afd *a)
+{
+    /*
+    * DDDDD-DDD
+    * 10 estados
+    * começo = 0
+    * final = 9
+    */
+    a->n = 10; 
+    a->start = 0;
+    a->final = 9;
+    a->transitions = malloc(a->n * sizeof(struct line *));
+    
+    unsigned int i;
+    char s;
 
-            // invalidar strings com traço fora do lugar
-            if (symbol == '-' && current_state != DASH_STATE)
-            {
-                return 0;
-            }
-
-            transition = transition->next; // transiciona
-        }
+    // Inicializa todas as transições em NULL
+    for (i = 0; i < a->n; i++)
+    {
+        a->transitions[i] = NULL;
+    }
 
 
-        if (transition == NULL)
+    // Transições do estado 0 até o 4 podem receber qualquer digito de 0-9 
+    for (i = 0; i <= 4; i++)
+    {
+        for (s = '0'; s <= '9'; s++)
         {
-            return 0; // transição inválida
-        }
-
-        if (i == f && current_state == FINAL_STATE)
-        {
-            return 1; // string reconhecida
+            insert_line(&a->transitions[i], create_line(s, i+1));
         }
     }
 
+
+    // Transições do estado 5 caso receba um -
+    insert_line(&a->transitions[5], create_line('-', 6));
+
+    // Caso receba apenas números, pula para o estado 7
+    for (s = '0'; s <= '9'; s++)
+    {
+        insert_line(&a->transitions[5], create_line(s, 7));
+    }
+
+    // Transições finais do estado 6 ao 8
+    for (i = 6; i <= 8; i++)
+    {
+        for (s = '0'; s <= '9'; s++)
+        {
+            insert_line(&a->transitions[i], create_line(s, i + 1));
+        }
+    }
+
+}
+
+int match(char *string, struct afd *t)
+{
+    unsigned int current_state = t->start; // inicializa o estado atual
+    unsigned int i = 0; // inicializa contador
+    struct line *l; // inicializa uma linha da tabela
+    
+    while (string[i] != '\0')
+    {
+        l = t->transitions[current_state];
+
+        while (l != NULL)
+        {
+            if (l->symbol == string[i])
+            {
+                current_state = l->next_state;
+                break;
+            }
+
+            l = l->next;
+        }
+
+        if (l == NULL)  
+        {   
+            return 0;
+        }
+
+        i++;
+    }
+
+    if (current_state == t->final)
+    {
+        return 1;
+    }
     return 0; // string não reconhecida
 }
 

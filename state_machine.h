@@ -1,6 +1,8 @@
 struct afd
 {
     unsigned int n;
+    unsigned int start;
+    unsigned int final;
     struct line **transitions;
 };
 
@@ -11,6 +13,12 @@ struct line
     struct line *next;
 };
 
-struct afd *initializeAFD();
+struct line *create_line(char s, unsigned int i);
+void insert_line(struct line **l, struct line *n);
+void destroy_line(struct line *l);
 
-int match(char *string, int s, int f, struct afd *t);
+void initializeAFD(struct afd *a);
+void destroy_afd(struct afd *a);
+
+
+int match(char *string, struct afd *t);
